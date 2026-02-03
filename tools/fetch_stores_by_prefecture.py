@@ -6,7 +6,14 @@ import streamlit as st
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-# 스크립트 파일 위치 기준으로 프로젝트 루트 경로 계산
+# ============================================================
+# 크로스 플랫폼 경로 처리 (Windows / macOS / Linux 호환)
+# ============================================================
+# 상대 경로(예: "./data")는 현재 작업 디렉토리(CWD) 기준으로 해석되어
+# 실행 위치에 따라 FileNotFoundError가 발생할 수 있음.
+# pathlib.Path와 __file__을 사용하여 스크립트 파일 위치 기준의 절대 경로를 계산함으로써
+# 어떤 운영체제에서 어떤 디렉토리에서 실행하더라도 올바른 경로를 참조하도록 함.
+# ============================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -16,6 +23,14 @@ class FetchStoresInput(BaseModel):
     pref: str = Field()
 
 
+# ============================================================
+# Streamlit 캐시 설정 (show_spinner=False)
+# ============================================================
+# LangGraph 에이전트는 별도의 스레드(ThreadPoolExecutor)에서 tool을 실행함.
+# 이 스레드에는 Streamlit 세션 컨텍스트가 없어서 st.cache_data의
+# 기본 spinner가 NoSessionContext 에러를 발생시킴.
+# show_spinner=False로 설정하여 이 문제를 해결함.
+# ============================================================
 @st.cache_data(ttl="1d", show_spinner=False)
 def load_stores_from_csv():
     csv_path = BASE_DIR / "data" / "bearmobile_stores.csv"

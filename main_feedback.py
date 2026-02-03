@@ -1,14 +1,17 @@
 # GitHub: https://github.com/naotaka1128/llm_app_codes/chapter_010/main_feedback_new.py
 
 import streamlit as st
-import uuid  #  thread_id 생성용
+import uuid  # thread_id 생성용
 
 # ============================================================
-#  LangChain 1.0.0+ 신규 create_agent 사용
+# [수정] LangChain 1.0.0+ 버전 대응
+# - 기존: create_tool_calling_agent + AgentExecutor 조합
+# - 변경: create_agent 단일 API로 통합 (더 간결한 코드)
+# - 이유: LangChain 1.0.0에서 에이전트 생성 API가 단순화됨
 # ============================================================
 from langchain.agents import create_agent
-from langchain.agents.middleware import SummarizationMiddleware
-from langgraph.checkpoint.memory import InMemorySaver
+from langchain.agents.middleware import SummarizationMiddleware  # 대화 요약 미들웨어
+from langgraph.checkpoint.memory import InMemorySaver  # 대화 상태 저장소
 
 # models
 from langchain_openai import ChatOpenAI
@@ -23,7 +26,13 @@ from tools.fetch_stores_by_prefecture import fetch_stores_by_prefecture
 from src.cache import Cache
 from src.feedback import add_feedback
 
-#  StreamlitLanggraphHandler 사용 (기존 StreamlitCallbackHandler 대체)
+# ============================================================
+# [수정] 스트리밍 핸들러 변경
+# - 기존: StreamlitCallbackHandler (LangChain 레거시)
+# - 변경: StreamlitLanggraphHandler (LangGraph 호환)
+# - 이유: create_agent가 내부적으로 LangGraph 기반으로 동작하므로
+#         LangGraph 전용 핸들러 사용 필요
+# ============================================================
 from youngjin_langchain_tools import StreamlitLanggraphHandler
 
 # LangSmith trace
@@ -32,11 +41,9 @@ from langsmith import traceable
 ###### dotenv를 사용하지 않는 경우는 삭제해주세요 ######
 try:
     from dotenv import load_dotenv
-
     load_dotenv()
 except ImportError:
     import warnings
-
     warnings.warn(
         "dotenv not found. Please make sure to set your environment variables manually.",
         ImportWarning,
@@ -66,7 +73,10 @@ def init_messages():
             "영진모바일 고객지원에 오신 것을 환영합니다. 질문을 입력해 주세요 🐻"
         )
         st.session_state.messages = [{"role": "assistant", "content": welcome_message}]
-        #  ConversationBufferWindowMemory 대신 InMemorySaver + thread_id 사용
+        # [수정] 메모리 관리 방식 변경
+        # - 기존: ConversationBufferWindowMemory (LangChain 레거시)
+        # - 변경: InMemorySaver + thread_id 조합 (LangGraph 방식)
+        # - 이유: create_agent는 LangGraph 기반으로 동작하며, checkpointer를 통해 대화 상태를 관리함
         st.session_state["checkpointer"] = InMemorySaver()
         st.session_state["thread_id"] = str(uuid.uuid4())
 
@@ -89,22 +99,25 @@ def select_model(temperature=0):
 
 
 # ============================================================
-#  에이전트 생성 방식 변경
-# (create_tool_calling_agent + AgentExecutor → create_agent)
+# [수정] 에이전트 생성 방식 변경
+# - 기존: create_tool_calling_agent + AgentExecutor 조합 (LangChain 0.x)
+# - 변경: create_agent 단일 API (LangChain 1.0+)
+# - 이유: 코드 간소화 + checkpointer 기반 상태 관리 + 미들웨어 지원
 # ============================================================
 def create_customer_support_agent():
     tools = [fetch_qa_content, fetch_stores_by_prefecture]
     custom_system_prompt = load_system_prompt("./prompt/system_prompt.txt")
     llm = select_model()
 
-    #  SummarizationMiddleware 추가
+    # [수정] SummarizationMiddleware 추가
+    # - 대화가 길어지면 자동으로 이전 대화 내용을 요약
     summarization_middleware = SummarizationMiddleware(
         model=llm,
         max_tokens_before_summary=8000,
         messages_to_keep=10,
     )
 
-    #  create_agent 사용 (system_prompt 직접 전달, checkpointer 사용)
+    # [수정] create_agent 사용 (system_prompt 직접 전달, checkpointer 사용)
     agent = create_agent(
         model=llm,
         tools=tools,
@@ -118,11 +131,12 @@ def create_customer_support_agent():
 
 
 # ============================================================
-#  run_agent 함수 변경 - StreamlitLanggraphHandler 사용
+# [수정] run_agent 함수
+# - @traceable 데코레이터로 LangSmith에 실행 기록
+# - run_id를 통해 해당 실행에 피드백 연결 가능
 # ============================================================
 @traceable  # LangSmith 트레이스
 def run_agent(agent, user_input, handler, thread_id):
-    """에이전트 실행 및 응답 반환 (LangSmith traceable)"""
     response = handler.invoke(
         agent=agent,
         input={"messages": [{"role": "user", "content": user_input}]},
@@ -132,7 +146,8 @@ def run_agent(agent, user_input, handler, thread_id):
 
 
 # ============================================================
-# Main Function - StreamlitLanggraphHandler 사용
+# Main Function
+# - [수정] StreamlitLanggraphHandler 사용 (기존 StreamlitCallbackHandler 대체)
 # ============================================================
 def main():
     init_page()
@@ -144,7 +159,6 @@ def main():
     customer_support_agent = create_customer_support_agent()
     cache = Cache()
 
-    #  대화 히스토리 표시 방식 변경
     for msg in st.session_state.messages:
         st.chat_message(msg["role"]).write(msg["content"])
 
@@ -163,14 +177,16 @@ def main():
                 st.stop()
 
         with st.chat_message("assistant"):
-            #  StreamlitLanggraphHandler 사용 (기존 StreamlitCallbackHandler 대체)
+            # [수정] StreamlitLanggraphHandler 사용 (기존 StreamlitCallbackHandler 대체)
             handler = StreamlitLanggraphHandler(
                 container=st.container(),
                 expand_new_thoughts=True,
                 max_thought_containers=4,
             )
 
-            #  에이전트 호출 방식 변경
+            # [수정] 에이전트 호출 방식 변경
+            # - 기존: executor.invoke({"input": prompt})
+            # - 변경: handler.invoke(agent, input, config)
             response = run_agent(
                 customer_support_agent,
                 prompt,
@@ -178,21 +194,18 @@ def main():
                 st.session_state["thread_id"]
             )
 
-            # [NOTE] run_id는 LangSmith traceable 데코레이터에서 자동 생성됨
-            # 필요시 handler 또는 langsmith 클라이언트에서 run_id 가져오기
             if hasattr(handler, 'run_id'):
                 st.session_state["run_id"] = str(handler.run_id)
                 print("🔥 RUN ID GENERATED:", st.session_state["run_id"])
 
-            # 응답 저장
             if response:
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
-        # 첫 번째 질문이면 캐시에 저장
+        # 첫 번째 질문인 경우 캐시에 저장
         if st.session_state["first_question"] and response:
             cache.save(prompt, response)
 
-    # LangSmith feedback 버튼 유지
+    # LangSmith feedback 버튼
     add_feedback()
 
 
