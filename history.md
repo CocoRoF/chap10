@@ -45,7 +45,7 @@
 2.
 setx LANGCHAIN_TRACING_V2 "true"
 setx LANGCHAIN_ENDPOINT "https://api.smith.langchain.com"
-setx LANGCHAIN_API_KEY "lsv2_pt_~~~~4e7fd697bb9445fdbb45ee090866d268_3f2af31d13~~~~"
+setx LANGCHAIN_API_KEY "lsv2_pt_~~~~"
 setx LANGCHAIN_PROJECT "youngjin_mobile"
 
 $env:LANGCHAIN_TRACING_V2="true"
