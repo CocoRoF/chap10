@@ -16,18 +16,6 @@ from tools.fetch_stores_by_prefecture import fetch_stores_by_prefecture
 
 from youngjin_langchain_tools import StreamlitLanggraphHandler
 
-###### dotenv 을 사용하지 않는 경우는 삭제해주세요 ######
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    import warnings
-    warnings.warn(
-        "dotenv not found. Please make sure to set your environment variables manually.",
-        ImportWarning,
-    )
-################################################
-
 
 CUSTOM_SYSTEM_PROMPT = """
 당신은 일본의 저가 통신사 '영진모바일'의 고객센터(CS) 상담원입니다.

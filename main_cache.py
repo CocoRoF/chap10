@@ -17,18 +17,6 @@ from src.cache import Cache
 
 from youngjin_langchain_tools import StreamlitLanggraphHandler
 
-###### dotenv를 사용하지 않는 경우는 삭제해주세요 ######
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    import warnings
-    warnings.warn(
-        "dotenv not found. Please make sure to set your environment variables manually.",
-        ImportWarning,
-    )
-################################################
-
 
 @st.cache_data
 def load_system_prompt(file_path):
