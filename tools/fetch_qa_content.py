@@ -1,46 +1,20 @@
-# GitHub: https://github.com/naotaka1128/llm_app_codes/chapter_010/tools/fetch_qa_content.py
-
-from pathlib import Path
 import streamlit as st
 from langchain_core.tools import tool
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from pydantic import BaseModel, Field
 
-# ============================================================
-# 크로스 플랫폼 경로 처리 (Windows / macOS / Linux 호환)
-# ============================================================
-# 상대 경로(예: "./vectorstore")는 현재 작업 디렉토리(CWD) 기준으로 해석되어
-# 실행 위치에 따라 FileNotFoundError가 발생할 수 있음.
-# pathlib.Path와 __file__을 사용하여 스크립트 파일 위치 기준의 절대 경로를 계산함으로써
-# 어떤 운영체제에서 어떤 디렉토리에서 실행하더라도 올바른 경로를 참조하도록 함.
-# ============================================================
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-
 class FetchQAContentInput(BaseModel):
     """타입을 지정하기 위한 클래스"""
-
     query: str = Field()
 
-
-# ============================================================
-# Streamlit 캐시 설정 (show_spinner=False)
-# ============================================================
-# LangGraph 에이전트는 별도의 스레드(ThreadPoolExecutor)에서 tool을 실행함.
-# 이 스레드에는 Streamlit 세션 컨텍스트가 없어서 st.cache_resource의
-# 기본 spinner가 NoSessionContext 에러를 발생시킴.
-# show_spinner=False로 설정하여 이 문제를 해결함.
-# ============================================================
 @st.cache_resource(show_spinner=False)
-def load_qa_vectorstore():
+def load_qa_vectorstore(vectorstore_path="./vectorstore/qa_vectorstore"):
     """'자주 묻는 질문' 벡터 DB를 로드"""
-    vectorstore_path = BASE_DIR / "vectorstore" / "qa_vectorstore"
     embeddings = OpenAIEmbeddings()
     return FAISS.load_local(
-        str(vectorstore_path), embeddings=embeddings, allow_dangerous_deserialization=True
+        vectorstore_path, embeddings=embeddings, allow_dangerous_deserialization=True
     )
-
 
 @tool(args_schema=FetchQAContentInput)
 def fetch_qa_content(query):

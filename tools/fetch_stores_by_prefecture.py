@@ -1,42 +1,17 @@
-# GitHub: https://github.com/naotaka1128/llm_app_codes/chapter_010/tools/fetch_stores_by_prefecture.py
-
-from pathlib import Path
+from typing import Literal
 import pandas as pd
 import streamlit as st
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-# ============================================================
-# 크로스 플랫폼 경로 처리 (Windows / macOS / Linux 호환)
-# ============================================================
-# 상대 경로(예: "./data")는 현재 작업 디렉토리(CWD) 기준으로 해석되어
-# 실행 위치에 따라 FileNotFoundError가 발생할 수 있음.
-# pathlib.Path와 __file__을 사용하여 스크립트 파일 위치 기준의 절대 경로를 계산함으로써
-# 어떤 운영체제에서 어떤 디렉토리에서 실행하더라도 올바른 경로를 참조하도록 함.
-# ============================================================
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-
 class FetchStoresInput(BaseModel):
     """타입을 지정하기 위한 클래스"""
+    pref: Literal["전국", "서울특별시", "경기도", "인천광역시", "충청북도", "충청남도", "경상북도", "대전광역시", "대구광역시", "울산광역시", "부산광역시", "경상남도", "전라북도", "전라남도", "제주특별자치도"] = Field()
 
-    pref: str = Field()
-
-
-# ============================================================
-# Streamlit 캐시 설정 (show_spinner=False)
-# ============================================================
-# LangGraph 에이전트는 별도의 스레드(ThreadPoolExecutor)에서 tool을 실행함.
-# 이 스레드에는 Streamlit 세션 컨텍스트가 없어서 st.cache_data의
-# 기본 spinner가 NoSessionContext 에러를 발생시킴.
-# show_spinner=False로 설정하여 이 문제를 해결함.
-# ============================================================
 @st.cache_data(ttl="1d", show_spinner=False)
 def load_stores_from_csv():
-    csv_path = BASE_DIR / "data" / "bearmobile_stores.csv"
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv("./data/bearmobile_stores.csv")
     return df.sort_values(by="pref_id")
-
 
 @tool(args_schema=FetchStoresInput)
 def fetch_stores_by_prefecture(pref):
