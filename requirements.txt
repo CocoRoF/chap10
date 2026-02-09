@@ -13,7 +13,7 @@ langchain-anthropic==1.1.0
 langchain-classic==1.0.0
 
 # Additional tools (260209)
-youngjin-langchain-tools==0.3.0
+youngjin-langchain-tools==0.3.3
 
 # LLM API clients
 openai==2.8.1

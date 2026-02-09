@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class FetchQAContentInput(BaseModel):
     """타입을 지정하기 위한 클래스"""
+
     query: str = Field()
 
 @st.cache_resource(show_spinner=False)

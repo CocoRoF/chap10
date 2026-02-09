@@ -1,17 +1,9 @@
-# GitHub: https://github.com/naotaka1128/llm_app_codes/chapter_010/main_feedback_new.py
-
 import streamlit as st
 import uuid  # thread_id 생성용
 
-# ============================================================
-# [수정] LangChain 1.0.0+ 버전 대응
-# - 기존: create_tool_calling_agent + AgentExecutor 조합
-# - 변경: create_agent 단일 API로 통합 (더 간결한 코드)
-# - 이유: LangChain 1.0.0에서 에이전트 생성 API가 단순화됨
-# ============================================================
 from langchain.agents import create_agent
-from langchain.agents.middleware import SummarizationMiddleware  # 대화 요약 미들웨어
-from langgraph.checkpoint.memory import InMemorySaver  # 대화 상태 저장소
+from langchain.agents.middleware import SummarizationMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
 
 # models
 from langchain_openai import ChatOpenAI
@@ -28,21 +20,6 @@ from src.feedback import add_feedback
 
 # Custom Streamlit Handler
 from youngjin_langchain_tools import StreamlitLanggraphHandler
-
-# LangSmith trace
-from langsmith import traceable
-
-###### dotenv를 사용하지 않는 경우는 삭제해주세요 ######
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    import warnings
-    warnings.warn(
-        "dotenv not found. Please make sure to set your environment variables manually.",
-        ImportWarning,
-    )
-################################################
 
 
 @st.cache_data
@@ -105,7 +82,6 @@ def create_customer_support_agent():
     return agent
 
 
-@traceable  # LangSmith 트레이스
 def run_agent(agent, user_input, handler, thread_id):
     response = handler.invoke(
         agent=agent,
@@ -144,16 +120,12 @@ def main():
                 st.stop()
 
         with st.chat_message("assistant"):
-            # [수정] StreamlitLanggraphHandler 사용 (기존 StreamlitCallbackHandler 대체)
             handler = StreamlitLanggraphHandler(
                 container=st.container(),
                 expand_new_thoughts=True,
                 max_thought_containers=4,
             )
 
-            # [수정] 에이전트 호출 방식 변경
-            # - 기존: executor.invoke({"input": prompt})
-            # - 변경: handler.invoke(agent, input, config)
             response = run_agent(
                 customer_support_agent,
                 prompt,

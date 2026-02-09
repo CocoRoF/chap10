@@ -1,5 +1,3 @@
-# GitHub: https://github.com/naotaka1128/llm_app_codes/chapter_010/build_qa_vectorstore.py
-
 import pandas as pd
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS

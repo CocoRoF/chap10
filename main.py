@@ -1,17 +1,9 @@
-# GitHub: https://github.com/naotaka1128/llm_app_codes/chapter_010/main_new.py
-
 import streamlit as st
-import uuid  #  thread_id 생성용
+import uuid
 
-# ============================================================
-# [수정] LangChain 1.0.0+ 버전 대응
-# - 기존: create_tool_calling_agent + AgentExecutor 조합
-# - 변경: create_agent 단일 API로 통합 (더 간결한 코드)
-# - 이유: LangChain 1.0.0에서 에이전트 생성 API가 단순화됨
-# ============================================================
 from langchain.agents import create_agent
-from langchain.agents.middleware import SummarizationMiddleware  # 대화 요약 미들웨어
-from langgraph.checkpoint.memory import InMemorySaver  # 대화 상태 저장소
+from langchain.agents.middleware import SummarizationMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
 
 # models
 from langchain_openai import ChatOpenAI
@@ -22,13 +14,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from tools.fetch_qa_content import fetch_qa_content
 from tools.fetch_stores_by_prefecture import fetch_stores_by_prefecture
 
-# ============================================================
-# [수정] 스트리밍 핸들러 변경
-# - 기존: StreamlitCallbackHandler (LangChain 레거시)
-# - 변경: StreamlitLanggraphHandler (LangGraph 호환)
-# - 이유: create_agent가 내부적으로 LangGraph 기반으로 동작하므로
-#         LangGraph 전용 핸들러 사용 필요
-# ============================================================
 from youngjin_langchain_tools import StreamlitLanggraphHandler
 
 ###### dotenv 을 사용하지 않는 경우는 삭제해주세요 ######
@@ -44,9 +29,6 @@ except ImportError:
 ################################################
 
 
-# ============================================================
-# System Prompt
-# ============================================================
 CUSTOM_SYSTEM_PROMPT = """
 당신은 일본의 저가 통신사 '영진모바일'의 고객센터(CS) 상담원입니다.
 고객의 문의에 대해 성실하고 정확하게 답변해주세요.
@@ -76,9 +58,6 @@ CUSTOM_SYSTEM_PROMPT = """
 """
 
 
-# ============================================================
-# Streamlit UI Functions
-# ============================================================
 def init_page():
     st.set_page_config(page_title="고객센터", page_icon="🐻")
     st.header("고객센터🐻")
@@ -92,10 +71,6 @@ def init_messages():
             "영진모바일 고객센터에 오신 것을 환영합니다. 무엇이든 문의해주세요🐻"
         )
         st.session_state.messages = [{"role": "assistant", "content": welcome_message}]
-        # [수정] 메모리 관리 방식 변경
-        # - 기존: ConversationBufferWindowMemory (LangChain 레거시)
-        # - 변경: InMemorySaver + thread_id 조합 (LangGraph 방식)
-        # - 이유: create_agent는 LangGraph 기반으로 동작하며, checkpointer를 통해 대화 상태를 관리함
         st.session_state["checkpointer"] = InMemorySaver()
         st.session_state["thread_id"] = str(uuid.uuid4())
 
@@ -115,25 +90,16 @@ def select_model(temperature=0):
         return ChatGoogleGenerativeAI(temperature=temperature, model="gemini-2.5-flash")
 
 
-# ============================================================
-# [수정] 에이전트 생성 방식 변경
-# - 기존: create_tool_calling_agent + AgentExecutor 조합 (LangChain 0.x)
-# - 변경: create_agent 단일 API (LangChain 1.0+)
-# - 이유: 코드 간소화 + checkpointer 기반 상태 관리 + 미들웨어 지원
-# ============================================================
 def create_customer_support_agent():
     tools = [fetch_qa_content, fetch_stores_by_prefecture]
     llm = select_model()
 
-    # [수정] SummarizationMiddleware 추가
-    # - 대화가 길어지면 자동으로 이전 대화 내용을 요약
     summarization_middleware = SummarizationMiddleware(
         model=llm,
         max_tokens_before_summary=8000,
         messages_to_keep=10,
     )
 
-    # [수정] create_agent 사용 (system_prompt 직접 전달, checkpointer 사용)
     agent = create_agent(
         model=llm,
         tools=tools,
@@ -146,10 +112,6 @@ def create_customer_support_agent():
     return agent
 
 
-# ============================================================
-# Main Function
-# - [수정] StreamlitLanggraphHandler 사용 (기존 StreamlitCallbackHandler 대체)
-# ============================================================
 def main():
     init_page()
     init_messages()
@@ -163,16 +125,12 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         with st.chat_message("assistant"):
-            # [수정] StreamlitLanggraphHandler 사용 (기존 StreamlitCallbackHandler 대체)
             handler = StreamlitLanggraphHandler(
                 container=st.container(),
                 expand_new_thoughts=True,
                 max_thought_containers=4,
             )
 
-            # [수정] 에이전트 호출 방식 변경
-            # - 기존: executor.invoke({"input": prompt})
-            # - 변경: handler.invoke(agent, input, config)
             response = handler.invoke(
                 agent=customer_support_agent,
                 input={"messages": [{"role": "user", "content": prompt}]},
