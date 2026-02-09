@@ -12,7 +12,9 @@ class Cache:
         self.embeddings = OpenAIEmbeddings()
 
     def load_vectorstore(self):
-        if os.path.exists(self.vectorstore_path):
+        index_faiss = os.path.join(self.vectorstore_path, "index.faiss")
+        index_pkl = os.path.join(self.vectorstore_path, "index.pkl")
+        if os.path.exists(index_faiss) and os.path.exists(index_pkl):
             return FAISS.load_local(
                 self.vectorstore_path,
                 embeddings=self.embeddings,
