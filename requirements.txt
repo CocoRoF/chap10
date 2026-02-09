@@ -12,8 +12,8 @@ langchain-google-genai==3.1.0
 langchain-anthropic==1.1.0
 langchain-classic==1.0.0
 
-# Additional tools (260203)
-youngjin-langchain-tools==0.2.1
+# Additional tools (260209)
+youngjin-langchain-tools==0.2.3
 
 # LLM API clients
 openai==2.8.1
