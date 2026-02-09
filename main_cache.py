@@ -152,17 +152,13 @@ def main():
                 st.session_state.messages.append(
                     {"role": "assistant", "content": cache_content}
                 )
-                st.stop()
+                st.stop() # 캐시 내용을 출력한 경우 실행 종료
 
         with st.chat_message("assistant"):
-            # [수정] StreamlitLanggraphHandler 사용 (기존 StreamlitCallbackHandler 대체)
             handler = StreamlitLanggraphHandler(
-                container=st.container(),
-                expand_new_thoughts=True,
-                max_thought_containers=4,
+                container=st.container(), expand_new_thoughts=True, max_thought_containers=4,
             )
 
-            # [수정] 에이전트 호출 방식 변경
             response = handler.invoke(
                 agent=customer_support_agent,
                 input={"messages": [{"role": "user", "content": prompt}]},
